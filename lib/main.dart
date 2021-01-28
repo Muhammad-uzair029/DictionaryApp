@@ -2,11 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 // import 'package:DcitionaryApp/profaneCheck.dart';
+import 'package:AnySearch/Variables.dart';
+import 'package:AnySearch/Bloc_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:bad_words/bad_words.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:provider/provider.dart';
 import 'package:translator/translator.dart';
+import 'package:AnySearch/Bloc_provider.dart';
 
 void main() {
   runApp(MyApp());
@@ -16,14 +20,20 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: MyHomePage(),
-    );
+    return MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ChangTransBloc>.value(
+            value: ChangTransBloc(),
+          ),
+        ],
+        child: MaterialApp(
+          title: 'Flutter Demo',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+          ),
+          home: MyHomePage(),
+        ));
   }
 }
 
@@ -33,6 +43,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+// Variable Class instance creation
+  Variables _variables = new Variables();
+
   // Filter for badcheck worrdss
   final String filer = " off.";
   Filter filter = new Filter();
@@ -45,6 +58,14 @@ class _MyHomePageState extends State<MyHomePage> {
   StreamController _streamController;
   Stream _stream;
   Timer _debounce;
+  // used in Stream Builder
+
+  bool isExpanded = false;
+  bool descTextShowFlag = false;
+
+  //====================== language Selectorrr===========================
+  String dropdownValue;
+
   var translatedText;
   _seaarch() async {
     if (_controller.text == null || _controller.text.length == 0) {
@@ -54,99 +75,6 @@ class _MyHomePageState extends State<MyHomePage> {
     Response response = await get(_url + _controller.text.trim(),
         headers: {"Authorization": "Token " + _token});
     _streamController.add(json.decode(response.body));
-  }
-
-// used in Stream Builder
-  bool isExpanded = false;
-  bool descTextShowFlag = false;
-  //====================== language Selectorrr===========================
-  String dropdownValue;
-  // translaed word
-  var translatedSMS;
-  var translatedSentence;
-  var translatedDefWrod;
-  var translatedExample;
-  var translatedExampleWrod;
-  // translator
-  var translator = GoogleTranslator();
-  static const Map<String, String> lang = {
-    "Sindhi": "sd",
-    "(Pushto)": "ps",
-    "Nepali": "ne",
-    "Urdu": "ur",
-    "Turkish": "tr",
-    "Hindi": "hi",
-    "Kashmiri": "ks",
-    "Spanish": "es",
-    "French": "fr",
-    "German": "de",
-    "Arabic": "ar",
-    "Polska": "pl",
-    "New Zealand": "mi",
-    "Malta": "mt",
-    "Japan": "ja",
-    "Italia": "it",
-    "Iran": "fa",
-    "AUSTRALIA": "au",
-    "BAHAMAS": "bs",
-    "BAHRAIN": "bh",
-    "Telugu": "te",
-    "Tamil": "ta",
-    "Swedish": "sv",
-    "Russian": "ru",
-    "Romanian": "ro",
-    "Italian": "it",
-    "Irish": "ga",
-    "Indonesian": "id",
-    "Gujarati": "gu",
-    "Greek": "el",
-    "Farsi": "fa",
-    "Breton": "br",
-    "Bengali": "bn",
-  };
-
-  void trans(String value) {
-    translator.translate(value, from: 'en', to: "$dropdownValue").then((value) {
-      setState(() {
-        translatedSMS = value;
-      });
-    });
-  }
-
-  void transSentence(String value) {
-    translator.translate(value, from: 'en', to: "$dropdownValue").then((value) {
-      setState(() {
-        translatedSentence = value;
-      });
-    });
-  }
-
-  void transExample(String value) {
-    translator.translate(value, from: 'en', to: "$dropdownValue").then((value) {
-      setState(() {
-        translatedExample = value;
-      });
-    });
-  }
-
-  void translatedDefinitionWrod() {
-    translator
-        .translate('Defination', from: 'en', to: "$dropdownValue")
-        .then((value) {
-      setState(() {
-        translatedDefWrod = value;
-      });
-    });
-  }
-
-  void translatedExWrod() {
-    translator
-        .translate('Example', from: 'en', to: "$dropdownValue")
-        .then((value) {
-      setState(() {
-        translatedExampleWrod = value;
-      });
-    });
   }
 
   @override
@@ -160,6 +88,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+// Bloc
+    final ChangTransBloc _transBloc = Provider.of<ChangTransBloc>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Any Search"),
@@ -179,19 +110,10 @@ class _MyHomePageState extends State<MyHomePage> {
                     onFieldSubmitted: (valeue) {
                       checkSpell(valeue);
                       _seaarch();
-
-                      // translator
-                      //     .translate(valeue, from: 'en', to: 'ur')
-                      //     .then((value) {
-                      //   setState(() {
-                      //     translatedText = value;
-                      //   });
-                      // });
                     },
                     onChanged: (String text) {
                       if (_debounce?.isActive ?? false) _debounce.cancel();
                       _debounce = Timer(const Duration(milliseconds: 1000), () {
-                        // checkSpell(text);
                         _seaarch();
                       });
                     },
@@ -204,15 +126,6 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
               ),
-              // IconButton(
-              //   icon: Icon(
-              //     Icons.search,
-              //     color: Colors.white,
-              //   ),
-              //   onPressed: () {
-              //     _seaarch();
-              //   },
-              // )
             ],
           ),
         ),
@@ -417,19 +330,26 @@ class _MyHomePageState extends State<MyHomePage> {
                                             onChanged: (String newValue) {
                                               setState(() {
                                                 dropdownValue = newValue;
-                                                trans(_controller.text);
-                                                transSentence(
+                                                _transBloc.trans(
+                                                    _controller.text,
+                                                    dropdownValue);
+                                                _transBloc.transSentence(
                                                     snapshot.data["definitions"]
-                                                        [i]["definition"]);
-                                                transExample(
+                                                        [i]["definition"],
+                                                    dropdownValue);
+                                                _transBloc.transExample(
                                                     snapshot.data["definitions"]
-                                                        [i]["example"]);
+                                                        [i]["example"],
+                                                    dropdownValue);
 
-                                                translatedDefinitionWrod();
-                                                translatedExWrod();
+                                                _transBloc
+                                                    .translatedDefinitionWrod(
+                                                        dropdownValue);
+                                                _transBloc.translatedExWrod(
+                                                    dropdownValue);
                                               });
                                             },
-                                            items: lang
+                                            items: _variables.lang
                                                 .map((string, value) {
                                                   return MapEntry(
                                                     string,
@@ -451,9 +371,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                       Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Text(
-                                          translatedSMS == null
+                                          _transBloc.translatedSMS == null
                                               ? 'Select langauge to make translation  🤔'
-                                              : translatedSMS.toString(),
+                                              : _transBloc.translatedSMS
+                                                  .toString(),
                                           style: TextStyle(
                                               height: 1.5,
                                               fontSize: 15,
@@ -462,16 +383,19 @@ class _MyHomePageState extends State<MyHomePage> {
                                         ),
                                       ),
                                       Text(
-                                        translatedDefWrod.toString() == null
+                                        _transBloc.translatedDefWrod
+                                                    .toString() ==
+                                                null
                                             ? ''
-                                            : translatedDefWrod.toString(),
+                                            : _transBloc.translatedDefWrod
+                                                .toString(),
                                         style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black),
                                       ),
 
-                                      ShowWDE(translatedSentence),
+                                      ShowWDE(_transBloc.translatedSentence),
 
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
@@ -481,14 +405,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                             color: Colors.white),
                                       ),
                                       Text(
-                                        translatedExampleWrod.toString(),
+                                        _transBloc.translatedExampleWrod
+                                            .toString(),
                                         style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.black),
                                       ),
 
-                                      ShowWDE(translatedExample),
+                                      ShowWDE(_transBloc.translatedExample),
                                     ],
                                   ),
                                 )
@@ -528,7 +453,7 @@ class _MyHomePageState extends State<MyHomePage> {
           textColor: Colors.white,
           fontSize: 20);
     } else {
-      print('nttt');
+      print('not bad');
     }
   }
 }
